@@ -3,92 +3,165 @@
 <head>
   <title>Chatbox</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    html, body {
-      height: 100%;
+    * {
+      box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
-      background: #fafbfc;
+      transition: all 0.2s ease;
+    }
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      background: #131316;
+      color: #e5e5e5;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
     body {
       display: flex;
       flex-direction: column;
       height: 100vh;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 10px;
+      letter-spacing: -0.01em;
     }
     #guestCount {
       text-align: center;
-      margin: 10px 0 0 0;
-      font-size: 1.15em;
-      font-weight: bold;
+      margin: 12px 0 8px 0;
+      font-size: 0.95rem;
+      font-weight: 500;
       min-height: 1.4em;
       line-height: 1.6;
-      word-break: break-all;
+      color: #b0b0b0;
+      padding: 0 5px;
     }
     #chatLog {
       flex: 1 1 auto;
       display: flex;
       flex-direction: column-reverse;
-      padding: 10px 8px 0 8px;
+      padding: 15px 10px 10px 10px;
       overflow-y: auto;
-      border: 1px solid #ddd;
-      background: #fff;
+      border-radius: 12px;
+      background: #1c1c20;
       min-height: 0;
-      max-height: calc(100vh - 64px);
+      max-height: calc(100vh - 120px);
       font-size: 1rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+      scrollbar-width: thin;
+      scrollbar-color: #444 #1c1c20;
+    }
+    #chatLog::-webkit-scrollbar {
+      width: 8px;
+    }
+    #chatLog::-webkit-scrollbar-track {
+      background: #1c1c20;
+      border-radius: 10px;
+    }
+    #chatLog::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 10px;
+    }
+    #chatLog::-webkit-scrollbar-thumb:hover {
+      background: #555;
     }
     #messageForm {
       display: flex;
-      padding: 8px;
-      background: #fff;
+      padding: 12px 0 16px 0;
       position: sticky;
       bottom: 0;
-      border-top: 1px solid #eee;
     }
     #messageInput {
       flex-grow: 1;
-      padding: 12px;
+      padding: 14px 18px;
       font-size: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 20px;
+      font-family: 'Inter', sans-serif;
+      border: none;
+      border-radius: 24px;
+      background: #2a2a2e;
+      color: #e5e5e5;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    #messageInput::placeholder {
+      color: #8e8e8e;
+      font-weight: 400;
     }
     #messageInput:focus {
-      outline: 2px solid #007bff44;
+      outline: none;
+      background: #32323a;
+      box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15);
     }
     button {
-      padding: 12px 20px;
-      background: #007bff;
+      padding: 0 22px;
+      background: #3a3a42;
       color: white;
       border: none;
-      border-radius: 20px;
-      font-size: 1rem;
-      margin-left: 10px;
+      border-radius: 24px;
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      margin-left: 8px;
       cursor: pointer;
-      transition: background 0.2s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
-    button:active { background: #0056b3; }
+    button:hover {
+      background: #45454e;
+    }
+    button:active { 
+      background: #555555;
+      transform: translateY(1px);
+    }
     .message {
-      margin: 8px 0;
+      margin: 8px 0 12px 0;
+      padding: 2px 0;
       word-break: break-word;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .user {
-      font-weight: bold;
+      font-weight: 600;
       vertical-align: middle;
     }
     .timestamp {
-      color: #999;
-      font-size: 0.85em;
+      color: #8e8e8e;
+      font-size: 0.8em;
       margin-left: 7px;
       vertical-align: middle;
+      font-weight: 400;
+    }
+    .message div {
+      margin-top: 4px;
+      padding-left: 2px;
+      line-height: 1.45;
+      font-weight: 400;
     }
     @media (max-width: 600px) {
-      #chatLog {
-        font-size: 1.07em;
-        padding: 4px 2px 0 2px;
+      body {
+        padding: 0 6px;
       }
-      #messageInput, button {
-        font-size: 1em;
-        padding: 12px 8px;
+      #chatLog {
+        padding: 10px 8px 5px 8px;
+        font-size: 1rem;
+        border-radius: 10px;
+      }
+      #messageInput {
+        padding: 12px 16px;
+        font-size: 1rem;
+      }
+      button {
+        padding: 0 16px;
+        font-size: 0.95rem;
+      }
+      .message {
+        margin: 6px 0 10px 0;
       }
     }
   </style>
@@ -100,7 +173,7 @@
     <input
       type="text"
       id="messageInput"
-      placeholder="Send a message"
+      placeholder="Send a text. . ."
       autocomplete="off"
       required
       aria-label="Type your message"
@@ -111,13 +184,13 @@
   <script>
     // Utility: consistent color by username string
     function stringToColor(str) {
-      // Simple hash to color: pastel-like
+      // Simple hash to color: softer pastel colors for calm dark mode
       let hash = 0;
       for (let i = 0; i < str.length; i++) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
       }
       const hue = Math.abs(hash) % 360;
-      return `hsl(${hue}, 70%, 55%)`;
+      return `hsl(${hue}, 70%, 75%)`;
     }
 
     // Prompt for username on load
