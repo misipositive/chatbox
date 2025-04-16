@@ -16,10 +16,17 @@
       flex-direction: column;
       height: 100vh;
     }
+    #guestCount {
+      text-align: center;
+      margin: 10px 0 0 0;
+      font-size: 1.25em;
+      font-weight: bold;
+      min-height: 1.4em;
+    }
     #chatLog {
       flex: 1 1 auto;
       display: flex;
-      flex-direction: column-reverse; /* Newest at the bottom */
+      flex-direction: column-reverse;
       padding: 10px 8px 0 8px;
       overflow-y: auto;
       border: 1px solid #ddd;
@@ -85,6 +92,7 @@
   </style>
 </head>
 <body>
+  <div id="guestCount"></div>
   <div id="chatLog"></div>
   <form id="messageForm" autocomplete="off">
     <input
@@ -97,32 +105,31 @@
     />
     <button type="submit" aria-label="Send message">Send</button>
   </form>
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
+    // Prompt for username on load
+    let username = prompt(
+      "Enter your display name:",
+      "Guest-" + Math.floor(1000 + Math.random() * 9000)
+    ) || ("Guest-" + Math.floor(1000 + Math.random() * 9000));
+
     const roomId = window.location.pathname.split('/')[1];
     const socket = io();
 
-    // Join room on page load
     socket.on('connect', () => {
-      socket.emit('joinRoom', roomId);
+      console.log('Socket.IO connected!');
+      socket.emit('joinRoom', roomId, username);
     });
 
-    // Display message history
-    socket.on('messageHistory', (messages) => {
-      const chatLog = document.getElementById('chatLog');
-      chatLog.innerHTML = ""; // Clear before inserting
-      // Insert messages oldest to newest, but since column-reverse, append as normal
-      messages.forEach(msg => appendMessage(msg, false));
-      scrollToBottom();
+    socket.on('guestCount', (count) => {
+      document.getElementById('guestCount').textContent = `Guests online: ${count}`;
     });
 
-    // Handle new messages
     socket.on('receiveMessage', (msg) => {
-      appendMessage(msg, true);
+      appendMessage(msg);
       scrollToBottom();
     });
 
-    // Send messages
     document.getElementById('messageForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const input = document.getElementById('messageInput');
@@ -134,8 +141,7 @@
       }
     });
 
-    // Append messages to the chat log
-    function appendMessage(msg, scroll = true) {
+    function appendMessage(msg) {
       const chatLog = document.getElementById('chatLog');
       const div = document.createElement('div');
       div.className = 'message';
@@ -144,10 +150,9 @@
         <span class="timestamp">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         <div>${msg.text}</div>
       `;
-      chatLog.insertBefore(div, chatLog.firstChild); // Insert at top (for column-reverse)
+      chatLog.insertBefore(div, chatLog.firstChild);
     }
 
-    // Always scroll to the bottom (which is actually scrollTop = 0 in column-reverse)
     function scrollToBottom() {
       const chatLog = document.getElementById('chatLog');
       chatLog.scrollTop = 0;

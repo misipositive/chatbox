@@ -4,66 +4,75 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const { v4: uuidv4 } = require('uuid');
 
+// Serve static files from 'public' directory
 app.use(express.static('public'));
 
-// Redirect root to a new room
+// Root: redirect to a new room
 app.get('/', (req, res) => {
-  const roomId = uuidv4().substr(0, 8); // Shorten UUID for simplicity
+  const roomId = uuidv4().substr(0, 8);
   res.redirect(`/${roomId}`);
 });
 
-// Serve chat page for any room ID
+// Room: serve the chat page for any roomId
 app.get('/:roomId', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
-// Track rooms and messages
 const rooms = new Map();
 
 io.on('connection', (socket) => {
   let roomId = null;
-  let username = `Guest-${Math.floor(Math.random() * 1000)}`;
+  let username = null;
 
-  // Join room when client connects
-  socket.on('joinRoom', (receivedRoomId) => {
+  socket.on('joinRoom', (receivedRoomId, providedName) => {
     roomId = receivedRoomId;
+    username = providedName || `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
+    socket.username = username; // Save on socket for message events
+
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, { messages: [], participants: 0 });
+      rooms.set(roomId, { participants: 0 });
     }
-    const room = rooms.get(roomId);
-    room.participants++;
+    rooms.get(roomId).participants++;
     socket.join(roomId);
-    socket.emit('messageHistory', room.messages);
+
+    broadcastGuestCount(roomId);
+    console.log(`[joinRoom] Room: ${roomId}, participants: ${rooms.get(roomId).participants} user: ${username}`);
   });
 
-  // Handle messages
+  socket.on('disconnect', () => {
+    if (roomId && rooms.has(roomId)) {
+      rooms.get(roomId).participants--;
+      if (rooms.get(roomId).participants <= 0) {
+        rooms.delete(roomId);
+        console.log(`[disconnect] Room: ${roomId} deleted`);
+      } else {
+        broadcastGuestCount(roomId);
+        console.log(`[disconnect] Room: ${roomId}, participants: ${rooms.get(roomId).participants}`);
+      }
+    }
+  });
+
   socket.on('sendMessage', (text) => {
-    const sanitizedText = escapeHtml(text);
     const message = {
-      user: username,
-      text: sanitizedText,
+      user: socket.username || `Guest-${Math.floor(1000 + Math.random() * 9000)}`,
+      text: escapeHtml(text),
       timestamp: Date.now()
     };
-    if (rooms.has(roomId)) {
-      const room = rooms.get(roomId);
-      room.messages.push(message);
+    if (roomId && rooms.has(roomId)) {
       io.to(roomId).emit('receiveMessage', message);
     }
   });
 
-  // Handle disconnections
-  socket.on('disconnect', () => {
-    if (roomId && rooms.has(roomId)) {
-      const room = rooms.get(roomId);
-      room.participants--;
-      if (room.participants <= 0) {
-        rooms.delete(roomId); // Instantly delete the room when empty
-      }
+  function broadcastGuestCount(roomId) {
+    if (rooms.has(roomId)) {
+      const count = rooms.get(roomId).participants;
+      io.to(roomId).emit('guestCount', count);
+      console.log(`[broadcastGuestCount] Room: ${roomId}, participants: ${count}`);
     }
-  });
+  }
 });
 
-// Sanitize user input
+// Utility: escape HTML entities
 function escapeHtml(text) {
   return text
     .replace(/&/g, '&amp;')
@@ -74,4 +83,6 @@ function escapeHtml(text) {
 }
 
 const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => console.log(`Running on http://localhost:${PORT}`));
+http.listen(PORT, () =>
+  console.log(`Running on http://localhost:${PORT}`)
+);
