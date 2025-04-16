@@ -57,9 +57,7 @@ io.on('connection', (socket) => {
       const room = rooms.get(roomId);
       room.participants--;
       if (room.participants <= 0) {
-        setTimeout(() => {
-          if (room.participants === 0) rooms.delete(roomId);
-        }, 5 * 60 * 1000); // Delete room after 5 minutes
+        rooms.delete(roomId); // Instantly delete the room when empty
       }
     }
   });
