@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Chatbox</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #fafbfc;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #chatLog {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column-reverse; /* Newest at the bottom */
+      padding: 10px 8px 0 8px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      background: #fff;
+      min-height: 0;
+      max-height: calc(100vh - 64px);
+      font-size: 1rem;
+    }
+    #messageForm {
+      display: flex;
+      padding: 8px;
+      background: #fff;
+      position: sticky;
+      bottom: 0;
+      border-top: 1px solid #eee;
+    }
+    #messageInput {
+      flex-grow: 1;
+      padding: 12px;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+    }
+    #messageInput:focus {
+      outline: 2px solid #007bff44;
+    }
+    button {
+      padding: 12px 20px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 1rem;
+      margin-left: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:active { background: #0056b3; }
+    .message {
+      margin: 8px 0;
+      word-break: break-word;
+    }
+    .user {
+      font-weight: bold;
+      color: #234;
+    }
+    .timestamp {
+      color: #999;
+      font-size: 0.85em;
+      margin-left: 7px;
+      vertical-align: middle;
+    }
+    @media (max-width: 600px) {
+      #chatLog {
+        font-size: 1.07em;
+        padding: 4px 2px 0 2px;
+      }
+      #messageInput, button {
+        font-size: 1em;
+        padding: 12px 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="chatLog"></div>
+  <form id="messageForm" autocomplete="off">
+    <input
+      type="text"
+      id="messageInput"
+      placeholder="Type a message…"
+      autocomplete="off"
+      required
+      aria-label="Type your message"
+    />
+    <button type="submit" aria-label="Send message">Send</button>
+  </form>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const roomId = window.location.pathname.split('/')[1];
+    const socket = io();
+
+    // Join room on page load
+    socket.on('connect', () => {
+      socket.emit('joinRoom', roomId);
+    });
+
+    // Display message history
+    socket.on('messageHistory', (messages) => {
+      const chatLog = document.getElementById('chatLog');
+      chatLog.innerHTML = ""; // Clear before inserting
+      // Insert messages oldest to newest, but since column-reverse, append as normal
+      messages.forEach(msg => appendMessage(msg, false));
+      scrollToBottom();
+    });
+
+    // Handle new messages
+    socket.on('receiveMessage', (msg) => {
+      appendMessage(msg, true);
+      scrollToBottom();
+    });
+
+    // Send messages
+    document.getElementById('messageForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (text) {
+        socket.emit('sendMessage', text);
+        input.value = '';
+        input.focus();
+      }
+    });
+
+    // Append messages to the chat log
+    function appendMessage(msg, scroll = true) {
+      const chatLog = document.getElementById('chatLog');
+      const div = document.createElement('div');
+      div.className = 'message';
+      div.innerHTML = `
+        <span class="user">${msg.user}</span>
+        <span class="timestamp">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+        <div>${msg.text}</div>
+      `;
+      chatLog.insertBefore(div, chatLog.firstChild); // Insert at top (for column-reverse)
+    }
+
+    // Always scroll to the bottom (which is actually scrollTop = 0 in column-reverse)
+    function scrollToBottom() {
+      const chatLog = document.getElementById('chatLog');
+      chatLog.scrollTop = 0;
+    }
+  </script>
+</body>
+</html>
