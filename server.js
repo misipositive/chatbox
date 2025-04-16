@@ -4,16 +4,13 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const { v4: uuidv4 } = require('uuid');
 
-// Serve static files from 'public' directory
 app.use(express.static('public'));
 
-// Root: redirect to a new room
 app.get('/', (req, res) => {
   const roomId = uuidv4().substr(0, 8);
   res.redirect(`/${roomId}`);
 });
 
-// Room: serve the chat page for any roomId
 app.get('/:roomId', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
@@ -27,27 +24,31 @@ io.on('connection', (socket) => {
   socket.on('joinRoom', (receivedRoomId, providedName) => {
     roomId = receivedRoomId;
     username = providedName || `Guest-${Math.floor(1000 + Math.random() * 9000)}`;
-    socket.username = username; // Save on socket for message events
-
+    socket.username = username;
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, { participants: 0 });
+      rooms.set(roomId, { participants: 0, usernames: new Set() });
     }
-    rooms.get(roomId).participants++;
+    const room = rooms.get(roomId);
+    room.participants++;
+    room.usernames.add(username);
     socket.join(roomId);
-
-    broadcastGuestCount(roomId);
-    console.log(`[joinRoom] Room: ${roomId}, participants: ${rooms.get(roomId).participants} user: ${username}`);
+    broadcastGuestList(roomId);
+    console.log(`[joinRoom] Room: ${roomId}, participants: ${room.participants} user: ${username}`);
   });
 
   socket.on('disconnect', () => {
     if (roomId && rooms.has(roomId)) {
-      rooms.get(roomId).participants--;
-      if (rooms.get(roomId).participants <= 0) {
+      const room = rooms.get(roomId);
+      room.participants--;
+      if (room.usernames && socket.username) {
+        room.usernames.delete(socket.username);
+      }
+      if (room.participants <= 0) {
         rooms.delete(roomId);
         console.log(`[disconnect] Room: ${roomId} deleted`);
       } else {
-        broadcastGuestCount(roomId);
-        console.log(`[disconnect] Room: ${roomId}, participants: ${rooms.get(roomId).participants}`);
+        broadcastGuestList(roomId);
+        console.log(`[disconnect] Room: ${roomId}, participants: ${room.participants}`);
       }
     }
   });
@@ -63,11 +64,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  function broadcastGuestCount(roomId) {
+  function broadcastGuestList(roomId) {
     if (rooms.has(roomId)) {
-      const count = rooms.get(roomId).participants;
-      io.to(roomId).emit('guestCount', count);
-      console.log(`[broadcastGuestCount] Room: ${roomId}, participants: ${count}`);
+      const room = rooms.get(roomId);
+      const list = Array.from(room.usernames);
+      io.to(roomId).emit('guestList', list);
+      console.log(`[broadcastGuestList] Room: ${roomId}, users: ${list.join(", ")}`);
     }
   }
 });

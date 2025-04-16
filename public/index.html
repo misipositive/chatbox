@@ -19,9 +19,11 @@
     #guestCount {
       text-align: center;
       margin: 10px 0 0 0;
-      font-size: 1.25em;
+      font-size: 1.15em;
       font-weight: bold;
       min-height: 1.4em;
+      line-height: 1.6;
+      word-break: break-all;
     }
     #chatLog {
       flex: 1 1 auto;
@@ -71,7 +73,7 @@
     }
     .user {
       font-weight: bold;
-      color: #234;
+      vertical-align: middle;
     }
     .timestamp {
       color: #999;
@@ -107,6 +109,17 @@
   </form>
   <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
   <script>
+    // Utility: consistent color by username string
+    function stringToColor(str) {
+      // Simple hash to color: pastel-like
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      const hue = Math.abs(hash) % 360;
+      return `hsl(${hue}, 70%, 55%)`;
+    }
+
     // Prompt for username on load
     let username = prompt(
       "Enter your display name:",
@@ -116,13 +129,21 @@
     const roomId = window.location.pathname.split('/')[1];
     const socket = io();
 
-    socket.on('connect', () => {
-      console.log('Socket.IO connected!');
-      socket.emit('joinRoom', roomId, username);
+    // Show current guest list with colored names
+    socket.on('guestList', (list) => {
+      const guestCountDiv = document.getElementById('guestCount');
+      if (list && list.length > 0) {
+        guestCountDiv.innerHTML = `Guests online: ` + 
+          list.map(name => 
+            `<span style="color:${stringToColor(name)}">${escapeHtml(name)}</span>`
+          ).join(', ');
+      } else {
+        guestCountDiv.textContent = 'No guests online';
+      }
     });
 
-    socket.on('guestCount', (count) => {
-      document.getElementById('guestCount').textContent = `Guests online: ${count}`;
+    socket.on('connect', () => {
+      socket.emit('joinRoom', roomId, username);
     });
 
     socket.on('receiveMessage', (msg) => {
@@ -146,9 +167,9 @@
       const div = document.createElement('div');
       div.className = 'message';
       div.innerHTML = `
-        <span class="user">${msg.user}</span>
+        <span class="user" style="color:${stringToColor(msg.user)}">${escapeHtml(msg.user)}</span>
         <span class="timestamp">${new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        <div>${msg.text}</div>
+        <div>${escapeHtml(msg.text)}</div>
       `;
       chatLog.insertBefore(div, chatLog.firstChild);
     }
@@ -156,6 +177,16 @@
     function scrollToBottom() {
       const chatLog = document.getElementById('chatLog');
       chatLog.scrollTop = 0;
+    }
+
+    // Utility: simple HTML entity escape
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
   </script>
 </body>
