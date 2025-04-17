@@ -4,13 +4,17 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const { v4: uuidv4 } = require('uuid');
 
-app.use(express.static('public'));
-
+// Important: Define the root redirect BEFORE setting up static files
 app.get('/', (req, res) => {
   const roomId = uuidv4().substr(0, 8);
-  res.redirect(`/${roomId}`);
+  console.log(`Redirecting from root to room: ${roomId}`);
+  return res.redirect(`/${roomId}`);
 });
 
+// Serve static files AFTER the root redirect
+app.use(express.static('public'));
+
+// Room-specific route
 app.get('/:roomId', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
